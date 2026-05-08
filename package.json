@@ -1,0 +1,17 @@
+{
+  "name": "vulnerable-enterprise-api",
+  "version": "1.0.0",
+  "description": "Legacy Express service using RSA-2048 — scan target for Q-Day Auditor",
+  "main": "src/server.ts",
+  "scripts": {
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0"
+  }
+}
