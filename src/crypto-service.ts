@@ -23,7 +23,7 @@ export function decrypt(privateKey: Uint8Array, cipherText: Uint8Array): string 
   return decrypted;
 }
 
-export function sign(privateKey: Uint8Array, data: string): Uint8Array {
+export function sign(data: string, privateKey: Uint8Array): Uint8Array {
   const msg = new TextEncoder().encode(data);
   const signature = ml_dsa65.sign(msg, privateKey);
   return signature;
