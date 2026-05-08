@@ -1,49 +1,43 @@
-import crypto from 'node:crypto';
+import { ml_kem768 } from '@noble/post-quantum/ml-kem.js';
+import { randomBytes } from '@noble/post-quantum/utils.js';
+import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
+import { gcm } from '@noble/ciphers/aes';
 
 const RSA_KEY_OPTIONS = {
   modulusLength: 2048,
-  publicKeyEncoding: { type: 'spki' as const, format: 'pem' as const },
-  privateKeyEncoding: { type: 'pkcs8' as const, format: 'pem' as const },
+  publicKeyEncoding: { type: 'spki', format: 'der' },
+  privateKeyEncoding: { type: 'pkcs8', format: 'der' },
 };
 
-export function generateRSAKeyPair() {
-  const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', RSA_KEY_OPTIONS);
-  return { publicKey, privateKey };
+export function generateKeyPair() {
+  const seed = randomBytes(64);
+  const { publicKey, secretKey } = ml_kem768.keygen(seed);
+  return { publicKey, secretKey };
 }
 
-export function encryptWithRSA(publicKey: string, plaintext: string): Buffer {
-  return crypto.publicEncrypt(
-    {
-      key: publicKey,
-      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-      oaepHash: 'sha256',
-    },
-    Buffer.from(plaintext, 'utf-8'),
-  );
+export function encapsulate(publicKey: Uint8Array, plaintext: Uint8Array) {
+  const { cipherText, sharedSecret } = ml_kem768.encapsulate(publicKey);
+  const key = sharedSecret.slice(0, 32);
+  const nonce = randomBytes(12);
+  const aes = gcm(key, nonce);
+  const encrypted = aes.encrypt(plaintext);
+  return { cipherText, encrypted };
 }
 
-export function decryptWithRSA(privateKey: string, ciphertext: Buffer): string {
-  const decrypted = crypto.privateDecrypt(
-    {
-      key: privateKey,
-      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-      oaepHash: 'sha256',
-    },
-    ciphertext,
-  );
-  return decrypted.toString('utf-8');
+export function decapsulate(secretKey: Uint8Array, cipherText: Uint8Array) {
+  const sharedSecret = ml_kem768.decapsulate(cipherText, secretKey);
+  const key = sharedSecret.slice(0, 32);
+  const aes = gcm(key, cipherText.slice(12, cipherText.length - 16));
+  const decrypted = aes.decrypt(cipherText.slice(cipherText.length - 16));
+  return decrypted;
 }
 
-export function signData(privateKey: string, data: string): Buffer {
-  const signer = crypto.createSign('SHA256');
-  signer.update(data);
-  signer.end();
-  return signer.sign(privateKey);
+export function sign(privateKey: Uint8Array, data: string): Uint8Array {
+  const msg = new TextEncoder().encode(data);
+  return ml_dsa65.sign(msg, privateKey);
 }
 
-export function verifySignature(publicKey: string, data: string, signature: Buffer): boolean {
-  const verifier = crypto.createVerify('SHA256');
-  verifier.update(data);
-  verifier.end();
-  return verifier.verify(publicKey, signature);
+export function verify(publicKey: Uint8Array, data: string, signature: Uint8Array): boolean {
+  const msg = new TextEncoder().encode(data);
+  return ml_dsa65.verify(signature, msg, publicKey);
 }
