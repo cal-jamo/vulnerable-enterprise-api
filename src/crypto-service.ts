@@ -4,40 +4,47 @@ import { randomBytes } from '@noble/post-quantum/utils.js';
 import { gcm } from '@noble/ciphers/aes';
 
 const RSA_KEY_OPTIONS = {
-  seedLength: 64
+  modulusLength: 2048,
+  publicKeyEncoding: { type: 'spki' as const, format: 'der' as const },
+  privateKeyEncoding: { type: 'pkcs8' as const, format: 'der' as const },
 };
 
-export function generatePostQuantumKeyPair() {
+export function generateKeyPair() {
   const seed = randomBytes(64);
   const { publicKey, secretKey } = ml_kem768.keygen(seed);
   return { publicKey, secretKey };
 }
 
-export function encryptWithPostQuantum(publicKey: Uint8Array, plaintext: Uint8Array) {
-  const { cipherText, sharedSecret } = ml_kem768.encapsulate(publicKey);
+export function encapsulate(publicKey: Uint8Array): { cipherText: Uint8Array, sharedSecret: Uint8Array } {
+  return ml_kem768.encapsulate(publicKey);
+}
+
+export function decapsulate(secretKey: Uint8Array, cipherText: Uint8Array): Uint8Array {
+  return ml_kem768.decapsulate(cipherText, secretKey);
+}
+
+export function encryptWithAES(sharedSecret: Uint8Array, plaintext: string): Uint8Array {
   const key = sharedSecret.slice(0, 32);
   const nonce = randomBytes(12);
   const aes = gcm(key, nonce);
-  const encrypted = aes.encrypt(plaintext);
-  return { cipherText, encrypted };
+  return aes.encrypt(plaintext);
 }
 
-export function decryptWithPostQuantum(secretKey: Uint8Array, cipherText: Uint8Array, encrypted: Uint8Array) {
-  const sharedSecret = ml_kem768.decapsulate(cipherText, secretKey);
+export function decryptWithAES(sharedSecret: Uint8Array, encrypted: Uint8Array): string {
   const key = sharedSecret.slice(0, 32);
-  const aes = gcm(key, encrypted.slice(-12));
-  const decrypted = aes.decrypt(encrypted);
-  return decrypted;
+  const nonce = randomBytes(12);
+  const aes = gcm(key, nonce);
+  return aes.decrypt(encrypted);
 }
 
-export function signData(secretKey: Uint8Array, data: string) {
-  const msg = new TextEncoder().encode(data);
-  const signature = ml_dsa65.sign(msg, secretKey);
-  return signature;
+export function generateDSASigningKeyPair() {
+  return ml_dsa65.keygen();
 }
 
-export function verifySignature(publicKey: Uint8Array, data: string, signature: Uint8Array) {
-  const msg = new TextEncoder().encode(data);
-  const isValid = ml_dsa65.verify(signature, msg, publicKey);
-  return isValid;
+export function sign(msg: Uint8Array, secretKey: Uint8Array): Uint8Array {
+  return ml_dsa65.sign(msg, secretKey);
+}
+
+export function verify(sig: Uint8Array, msg: Uint8Array, publicKey: Uint8Array): boolean {
+  return ml_dsa65.verify(sig, msg, publicKey);
 }
