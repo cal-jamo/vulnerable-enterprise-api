@@ -1,4 +1,3 @@
-```typescript
 import express from 'express';
 import { ml_kem768 } from '@noble/post-quantum/ml-kem.js';
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
@@ -42,4 +41,3 @@ app.post('/sign', (req, res) => {
 app.listen(3001, () => {
   console.log('Vulnerable Enterprise API running on :3001');
 });
-```
