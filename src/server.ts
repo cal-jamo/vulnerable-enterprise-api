@@ -9,20 +9,20 @@ const { publicKey, privateKey } = generateRSAKeyPair();
 app.post('/encrypt', (req, res) => {
   const { message } = req.body as { message: string };
   const { cipherText, sharedSecret } = encryptWithRSA(publicKey, message);
-  res.json({ cipherText: Array.from(cipherText), sharedSecret: Array.from(sharedSecret) });
+  res.json({ cipherText: cipherText, sharedSecret: sharedSecret });
 });
 
 app.post('/decrypt', (req, res) => {
-  const { cipherText } = req.body as { cipherText: number[] };
-  const decrypted = decryptWithRSA(privateKey, Uint8Array.from(cipherText));
-  res.json({ plaintext: decrypted });
+  const { cipherText } = req.body as { cipherText: string };
+  const decrypted = decryptWithRSA(privateKey, Buffer.from(cipherText, 'base64'));
+  res.json({ plaintext: decrypted.toString() });
 });
 
 app.post('/sign', (req, res) => {
   const { data } = req.body as { data: string };
   const signature = signData(privateKey, data);
   const isValid = verifySignature(publicKey, data, signature);
-  res.json({ signature: Array.from(signature), verified: isValid });
+  res.json({ signature: signature.toString('base64'), verified: isValid });
 });
 
 app.listen(3001, () => {
